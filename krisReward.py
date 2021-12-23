@@ -54,8 +54,8 @@ def reward_function(params):
         reward *= 0.5
     
     point1 = waypoints[closest_waypoints[1]]
-    point2 = waypoints[closest_wapoints[2]]
-    point3 = waypoints[closest_wapoints[3]]
+    point2 = waypoints[closest_waypoints[2]]
+    point3 = waypoints[closest_waypoints[3]]
     
     slope1 = (point2.y-point1.y)(point3.x-point2.x)
     slope2 = (point3.y-point2.y)(point2.x-point1.x)
