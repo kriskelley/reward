@@ -50,17 +50,18 @@ def reward_function(params):
     if direction_diff > DIRECTION_THRESHOLD:
         reward *= 0.5
     
-    point3 = waypoints[closest_wapoints[2]]
+    if(is_offtrack)
+        reward *= 0.5
     
-    xdiff = abs(point3[1,0]-next_point[0,0])
-    ydiff = abs(point3[1,1]-next_point[0,1])
+    point1 = waypoints[closest_waypoints[1]]
+    point2 = waypoints[closest_wapoints[2]]
+    point3 = waypoints[closest_wapoints[3]]
     
-    print("xdiff=")
-    print(xdiff)
-    print("ydiff=")
-    print(ydiff)
+    slope1 = (point2.y-point1.y)(point3.x-point2.x)
+    slope2 = (point3.y-point2.y)(point2.x-point1.x)
     
-    if(xdiff == ydiff and speed >= 3.0) #Straight line
+    if(slope1 == slope2 and speed >= 3.0) #Straight line
         reward *= 2
+
 
     return float(reward)
