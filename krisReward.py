@@ -1,5 +1,3 @@
-import math
-
 def reward_function(params):
 
     # Read input variable
@@ -11,12 +9,13 @@ def reward_function(params):
     closest_waypoints = params['closest_waypoints']
     heading = params['heading']
     speed = params['speed']
-    
+    abs_steering = abs(params['steering_angle']) # Only need the absolute steering angle
+
     # Total num of steps we want the car to finish the lap, it will vary depends on the track length
-    TOTAL_NUM_STEPS = 300
+    TOTAL_NUM_STEPS = 500
 
     # Initialize the reward with typical value
-    reward = 1.0
+    reward = 10.0
 
     # Give additional reward if the car pass every 100 steps faster than expected
     if (steps % 100) == 0 and progress > (steps / TOTAL_NUM_STEPS) * 100 :
@@ -49,19 +48,40 @@ def reward_function(params):
     DIRECTION_THRESHOLD = 10.0
     if direction_diff > DIRECTION_THRESHOLD:
         reward *= 0.5
+    else:
+        reward *= 1.5
     
-    if(is_offtrack)
+    # Calculate 3 markers that are increasingly further away from the center line
+    marker_1 = 0.1 * track_width
+    marker_2 = 0.25 * track_width
+    marker_3 = 0.5 * track_width
+
+    # Give higher reward if the car is closer to center line and vice versa
+    if distance_from_center <= marker_1:
+        reward *= 1.5
+    elif distance_from_center <= marker_2:
+        reward *= 0.8
+    elif distance_from_center <= marker_3:
         reward *= 0.5
-    
-    point1 = waypoints[closest_waypoints[1]]
-    point2 = waypoints[closest_waypoints[2]]
-    point3 = waypoints[closest_waypoints[3]]
-    
-    slope1 = (point2.y-point1.y)(point3.x-point2.x)
-    slope2 = (point3.y-point2.y)(point2.x-point1.x)
-    
-    if(slope1 == slope2 and speed >= 3.0) #Straight line
-        reward *= 2
+    else:
+        reward *= 0.2  # likely crashed/ close to off track
 
+    # Penalize if car steer too much to prevent zigzag
+    ABS_STEERING_THRESHOLD = 20.0
+    if abs_steering > ABS_STEERING_THRESHOLD:
+        reward *= 0.8
+ 
+         #point1 = waypoints[closest_waypoints[1]]
+    #point2 = waypoints[closest_waypoints[2]]
+    #point3 = waypoints[closest_waypoints[3]]
+    
+    #slope1 = (point2.y-point1.y)(point3.x-point2.x)
+    #slope2 = (point3.y-point2.y)(point2.x-point1.x)
+    
+    #print('slope1='+slope1)
+    #print('slope2='+slope2)
 
+    #if(slope1 == slope2 and speed >= 2.5) #Straight line
+    #    reward *= 2
+ 
     return float(reward)
