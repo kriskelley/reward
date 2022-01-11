@@ -1,3 +1,4 @@
+import math
 def reward_function(params):
 
     # Read input variable
@@ -10,78 +11,77 @@ def reward_function(params):
     heading = params['heading']
     speed = params['speed']
     abs_steering = abs(params['steering_angle']) # Only need the absolute steering angle
-
+    currentposition = (params['x'],params['y'])
+    is_offtrack = params['is_offtrack']
+    all_wheels_on_track = params['all_wheels_on_track']
+    speed_up = False
+    straight = False
+    
     # Total num of steps we want the car to finish the lap, it will vary depends on the track length
-    TOTAL_NUM_STEPS = 500
+    TOTAL_NUM_STEPS = 700
+    STEER_THRES = 10
+    TURN_THRESHOLD_SPEED = 6
+    TURN_THRESHOLD_STRAIGHT = 20
+    FUTURE_STEP = 6
+    FUTURE_STEP_STRAIGHT = 8
+    
+    # Identify next waypoint and a further waypoint
+    point_prev = waypoints[closest_waypoints[0]]
+    point_next = waypoints[closest_waypoints[1]]
+    point_future = waypoints[min(len(waypoints) - 1,
+                                 closest_waypoints[1] + FUTURE_STEP)]
+
+    # Calculate headings to waypoints
+    heading_current = math.degrees(math.atan2(point_prev[1]-point_next[1], 
+                                           point_prev[0] - point_next[0]))
+    heading_future = math.degrees(math.atan2(point_prev[1] - point_future[1], 
+                                           point_prev[0] - point_future[0]))
+
+    # Calculate the difference between the headings
+    diff_heading = abs(heading_current - heading_future)
+
+    # Check we didn't choose the reflex angle
+    if diff_heading > 180:
+        diff_heading = 360 - diff_heading
+
+    if diff_heading < TURN_THRESHOLD_SPEED:
+        # If there's no corner encourage going faster
+        speed_up = True
+    else:
+        # If there is a corner encourage slowing down
+        speed_up = False
+
+    if diff_heading < TURN_THRESHOLD_STRAIGHT:
+        # If there's no corner encourage going straighter
+        straight = True
+    else:
+        # If there is a corner don't encourage going straighter
+        straight = False
 
     # Initialize the reward with typical value
-    reward = 10.0
+    reward = 1e-3
 
-    # Give additional reward if the car pass every 100 steps faster than expected
-    if (steps % 100) == 0 and progress > (steps / TOTAL_NUM_STEPS) * 100 :
-        reward += 10.0
+    if is_offtrack:
+        return reward
 
-    # Calculate the distance from each border
-    distance_from_border = 0.5 * track_width - distance_from_center
+    # Give higher reward if the car is closer to centre line and vice versa
+    # 0 if you're on edge of track, 1 if you're centre of track
+    reward = 1 - (distance_from_center/(track_width/2))**(1/4) 
 
-    # Reward higher if the car stays inside the track borders
-    if distance_from_border >= 0.05:
-        reward += 10.0
-    else:
-        reward -= 5 # Low reward if too close to the border or goes off the track
+    if (steps % 50) == 0 and progress/100 > (steps/TOTAL_NUM_STEPS):
+        # reward += 2.22 for each second faster than 45s projected
+        reward += progress - (steps/TOTAL_NUM_STEPS)*100
 
-    next_point = waypoints[closest_waypoints[1]]
-    prev_point = waypoints[closest_waypoints[0]]
+    if straight and abs_steering < STEER_THRES:
+        reward += 0.3
 
-    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians
-    track_direction = math.atan2(next_point[1] - prev_point[1], next_point[0] - prev_point[0])
-    
-    # Convert to degree
-    track_direction = math.degrees(track_direction)
-    
-    # Calculate the difference between the track direction and the heading direction of the car
-    direction_diff = abs(track_direction - heading)
-    if direction_diff > 180:
-        direction_diff = 360 - direction_diff
-
-    # Penalize the reward if the difference is too large
-    DIRECTION_THRESHOLD = 10.0
-    if direction_diff > DIRECTION_THRESHOLD:
-        reward *= 0.5
-    else:
-        reward *= 1.5
-    
-    # Calculate 3 markers that are increasingly further away from the center line
-    marker_1 = 0.1 * track_width
-    marker_2 = 0.25 * track_width
-    marker_3 = 0.5 * track_width
-
-    # Give higher reward if the car is closer to center line and vice versa
-    if distance_from_center <= marker_1:
-        reward *= 1.5
-    elif distance_from_center <= marker_2:
-        reward *= 0.8
-    elif distance_from_center <= marker_3:
-        reward *= 0.5
-    else:
-        reward *= 0.2  # likely crashed/ close to off track
-
-    # Penalize if car steer too much to prevent zigzag
-    ABS_STEERING_THRESHOLD = 20.0
-    if abs_steering > ABS_STEERING_THRESHOLD:
-        reward *= 0.8
- 
-         #point1 = waypoints[closest_waypoints[1]]
-    #point2 = waypoints[closest_waypoints[2]]
-    #point3 = waypoints[closest_waypoints[3]]
-    
-    #slope1 = (point2.y-point1.y)(point3.x-point2.x)
-    #slope2 = (point3.y-point2.y)(point2.x-point1.x)
-    
-    #print('slope1='+slope1)
-    #print('slope2='+slope2)
-
-    #if(slope1 == slope2 and speed >= 2.5) #Straight line
-    #    reward *= 2
- 
+    if speed_up and speed > 3 and abs_steering < STEER_THRES:
+        reward += 2.0
+    elif not speed_up and speed < 1:
+        reward += 0.5
+        
+    if not all_wheels_on_track:
+        reward -= 0.5
+        
+    reward = max(reward, 1e-3)
     return float(reward)
